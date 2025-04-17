@@ -108,6 +108,7 @@ package StreamTransactionPkg is
     SEND_ASYNC,
     SEND_BURST,
     SEND_BURST_ASYNC,
+    SEND_PACKET,
     -- VC Customization of TX Operations
     EXTEND_TX_OP,
     -- Receiver
@@ -121,6 +122,8 @@ package StreamTransactionPkg is
     CHECK_BURST,
     TRY_CHECK_BURST,
     RECEIVE,
+    RECEIVE_PACKET,
+    GET_PACKET,
     -- VC Customization of RX Operations
     EXTEND_RX_OP,
     -- Send and Get
@@ -522,6 +525,12 @@ package StreamTransactionPkg is
     constant DataPackets  : in slv_array_t;
     constant StatusMsgOn  : in boolean := false
   );
+
+  procedure SendPacket (
+    signal TransactionRec : inout StreamRecType;
+    constant PacketWordLength  : in integer;
+    constant StatusMsgOn  : in boolean := false
+  );
   -- ========================================================
   -- SendBurst
   -- Blocking Send Burst Transaction. 
@@ -794,11 +803,19 @@ package StreamTransactionPkg is
     constant StatusMsgOn  : in boolean := false
   );
 
+    ------------------------------------------------------------
+    procedure Get (
+      ------------------------------------------------------------
+      signal TransactionRec : inout StreamRecType;
+      variable DataPackets  : out slv_array_t;
+      constant StatusMsgOn  : in boolean := false
+    );
+
   ------------------------------------------------------------
-  procedure Get (
+  procedure GetPacket (
     ------------------------------------------------------------
     signal TransactionRec : inout StreamRecType;
-    variable DataPackets  : out slv_array_t;
+    variable PacketLength  : out integer;
     constant StatusMsgOn  : in boolean := false
   );
   -- ========================================================
@@ -830,16 +847,23 @@ package StreamTransactionPkg is
   );
 
   procedure Receive (
-  ------------------------------------------------------------
+    ------------------------------------------------------------
     signal TransactionRec : inout StreamRecType;
     constant StatusMsgOn  : in boolean := false
   );
 
   ------------------------------------------------------------
   procedure Receive (
-  ------------------------------------------------------------
+    ------------------------------------------------------------
     signal TransactionRec : inout StreamRecType;
-    constant NumOfPackets  : in integer;
+    constant NumOfPackets : in integer;
+    constant StatusMsgOn  : in boolean := false
+  );
+
+  --  ------------------------------------------------------------
+  procedure ReceivePacket (
+    --   ------------------------------------------------------------
+    signal TransactionRec : inout StreamRecType;
     constant StatusMsgOn  : in boolean := false
   );
   -- ========================================================
@@ -1807,6 +1831,17 @@ package body StreamTransactionPkg is
       LocalSend(TransactionRec, SEND_ASYNC, DataPackets(i), "", StatusMsgOn);
     end loop;
   end procedure SendAsync;
+
+  procedure SendPacket (
+    signal TransactionRec : inout StreamRecType;
+    constant PacketWordLength  : in integer;
+    constant StatusMsgOn  : in boolean := false
+  ) is
+  begin
+    TransactionRec.Operation <= SEND_PACKET;
+    TransactionRec.IntToModel <= PacketWordLength;
+    RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);
+  end procedure SendPacket;
   -- ========================================================
   -- SendBurst
   -- Blocking Send Burst Transaction. 
@@ -2197,6 +2232,20 @@ package body StreamTransactionPkg is
     end loop;
   end procedure Get;
 
+   ------------------------------------------------------------
+   procedure GetPacket (
+    ------------------------------------------------------------
+    signal TransactionRec : inout StreamRecType;
+    variable PacketLength  : out integer;
+    constant StatusMsgOn  : in boolean := false
+  ) is 
+  begin
+    TransactionRec.Operation   <= GET_PACKET;
+    TransactionRec.BoolToModel <= StatusMsgOn;
+    RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);
+    PacketLength := TransactionRec.IntFromModel;
+  end procedure GetPacket;
+
   -- ========================================================
   -- TryGet
   -- Try Get Transaction
@@ -2245,31 +2294,43 @@ package body StreamTransactionPkg is
   -- the VC can handle Ready_Allowance properly.
   -- ========================================================
   ------------------------------------------------------------
- procedure Receive (
-  ------------------------------------------------------------
+  procedure Receive (
+    ------------------------------------------------------------
     signal TransactionRec : inout StreamRecType;
     constant StatusMsgOn  : in boolean := false
   ) is
   begin
     TransactionRec.Operation   <= RECEIVE;
-    TransactionRec.IntToModel <= 1;
+    TransactionRec.IntToModel  <= 1;
     TransactionRec.BoolToModel <= StatusMsgOn;
-    RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);     
+    RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);
   end procedure Receive;
 
   ------------------------------------------------------------
   procedure Receive (
-  ------------------------------------------------------------
+    ------------------------------------------------------------
     signal TransactionRec : inout StreamRecType;
-    constant NumOfPackets  : in integer;
+    constant NumOfPackets : in integer;
     constant StatusMsgOn  : in boolean := false
   ) is
   begin
     TransactionRec.Operation   <= RECEIVE;
-    TransactionRec.IntToModel <= NumOfPackets;
+    TransactionRec.IntToModel  <= NumOfPackets;
     TransactionRec.BoolToModel <= StatusMsgOn;
-    RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);   
+    RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);
   end procedure Receive;
+
+  --  ------------------------------------------------------------
+  procedure ReceivePacket (
+    --   ------------------------------------------------------------
+    signal TransactionRec : inout StreamRecType;
+    constant StatusMsgOn  : in boolean := false
+  ) is
+  begin
+    TransactionRec.Operation   <= RECEIVE_PACKET;
+    TransactionRec.BoolToModel <= StatusMsgOn;
+    RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);
+  end procedure ReceivePacket;
   -- ========================================================
   -- GetBurst
   -- Blocking Get Burst Transaction. 
