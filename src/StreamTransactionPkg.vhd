@@ -124,6 +124,7 @@ package StreamTransactionPkg is
     RECEIVE,
     RECEIVE_PACKET,
     GET_PACKET,
+    CHECK_WORD_OF_PACKET,
     -- VC Customization of RX Operations
     EXTEND_RX_OP,
     -- Send and Get
@@ -944,6 +945,16 @@ package StreamTransactionPkg is
   procedure Check (
     signal TransactionRec : inout StreamRecType;
     constant DataPackets  : in slv_array_t;
+    constant StatusMsgOn  : in boolean := false
+  );
+  procedure CheckWordOfPacket (
+    signal TransactionRec : inout StreamRecType;
+    constant Data         : in std_logic_vector;
+    constant StatusMsgOn  : in boolean := false
+  );
+  procedure CheckPacket (
+    signal TransactionRec : inout StreamRecType;
+    constant DataPacket         : in slv_array_t;
     constant StatusMsgOn  : in boolean := false
   );
   -- ========================================================
@@ -2478,6 +2489,30 @@ package body StreamTransactionPkg is
       Check(TransactionRec, DataPackets(i), "", StatusMsgOn);
     end loop;
   end procedure Check;
+
+  procedure CheckWordOfPacket (
+    signal TransactionRec : inout StreamRecType;
+    constant Data         : in std_logic_vector;
+    constant StatusMsgOn  : in boolean := false
+  ) is
+    variable LocalParam : std_logic_vector(TransactionRec.ParamToModel'length - 1 downto 0) := (others => '-');
+  begin
+    TransactionRec.Operation    <= CHECK_WORD_OF_PACKET;
+    TransactionRec.DataToModel  <= SafeResize(Data, TransactionRec.DataToModel'length);
+    TransactionRec.BoolToModel  <= StatusMsgOn;
+    RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);
+  end procedure CheckWordOfPacket;
+
+  procedure CheckPacket (
+    signal TransactionRec : inout StreamRecType;
+    constant DataPacket  : in slv_array_t;
+    constant StatusMsgOn  : in boolean := false
+  ) is
+  begin
+    for i in 0 to DataPacket'length - 1 loop
+      CheckWordOfPacket(TransactionRec, DataPacket(i), StatusMsgOn); -- todo nicht direckt check verwenden.
+    end loop;
+  end procedure CheckPacket;
   -- ========================================================
   -- TryCheck
   -- Try Check Transaction
