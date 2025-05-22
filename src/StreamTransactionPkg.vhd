@@ -171,7 +171,11 @@ package StreamTransactionPkg is
     DataFromModel  : std_logic_vector_max_c;
     ParamFromModel : std_logic_vector_max_c;
     -- BurstFifo
+    -- Used for PacketTransfer interfaces such as AxiStream
     BurstFifo : ScoreboardIdType;
+    -- TransmitFifo
+    -- Used for WordTransfer interfaces such as AxiStream
+    TransmitFifo : ScoreboardIdType;
     --    UseCheckFifo    : boolean_max ; 
     --    CheckFifo       : ScoreboardIdType ; 
     -- Parameters - internal settings for the VC in a singleton data structure   
@@ -523,15 +527,18 @@ package StreamTransactionPkg is
 
   procedure SendAsync (
     signal TransactionRec : inout StreamRecType;
-    constant DataPackets  : in slv_array_t;
+    constant Words        : in slv_array_t;
+    constant NumOfWords   : in integer;
     constant StatusMsgOn  : in boolean := false
   );
 
   procedure SendPacket (
     signal TransactionRec : inout StreamRecType;
+    constant WordsOfPacket : in slv_array_t;
     constant PacketWordLength  : in integer;
     constant StatusMsgOn  : in boolean := false
   );
+
   -- ========================================================
   -- SendBurst
   -- Blocking Send Burst Transaction. 
@@ -1832,23 +1839,35 @@ package body StreamTransactionPkg is
     LocalSend(TransactionRec, SEND_ASYNC, Data, "", StatusMsgOn);
   end procedure SendAsync;
 
+  ------------------------------------------------------------
+  -- for AvalonStreaming
+  ------------------------------------------------------------
   procedure SendAsync (
     signal TransactionRec : inout StreamRecType;
-    constant DataPackets  : in slv_array_t;
+    constant Words        : in slv_array_t;
+    constant NumOfWords   : in integer;
     constant StatusMsgOn  : in boolean := false
   ) is
   begin
-    for i in 0 to DataPackets'length - 1 loop
-      LocalSend(TransactionRec, SEND_ASYNC, DataPackets(i), "", StatusMsgOn);
+    for i in 0 to NumOfWords - 1 loop
+      Push(TransactionRec.TransmitFifo, Words(i));
     end loop;
+    TransactionRec.Operation <= SEND_ASYNC;
+    TransactionRec.IntToModel   <= NumOfWords;
+    TransactionRec.BoolToModel  <= StatusMsgOn;
+    RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);
   end procedure SendAsync;
 
   procedure SendPacket (
-    signal TransactionRec : inout StreamRecType;
-    constant PacketWordLength  : in integer;
-    constant StatusMsgOn  : in boolean := false
+    signal TransactionRec       : inout StreamRecType;
+    constant WordsOfPacket      : in slv_array_t;
+    constant PacketWordLength   : in integer;
+    constant StatusMsgOn        : in boolean := false
   ) is
   begin
+    for i in 0 to PacketWordLength - 1 loop
+      Push(TransactionRec.BurstFifo, WordsOfPacket(i));
+    end loop;
     TransactionRec.Operation <= SEND_PACKET;
     TransactionRec.IntToModel <= PacketWordLength;
     RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);
