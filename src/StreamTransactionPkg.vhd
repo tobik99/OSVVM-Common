@@ -819,6 +819,15 @@ package StreamTransactionPkg is
       constant StatusMsgOn  : in boolean := false
     );
 
+    ------------------------------------------------------------
+  procedure Get (
+    ------------------------------------------------------------
+    signal TransactionRec : inout StreamRecType;
+    variable Words  : out slv_array_t;
+    constant NumOfWords : in integer;
+    constant StatusMsgOn  : in boolean := false
+  );
+
   ------------------------------------------------------------
   procedure GetPacket (
     ------------------------------------------------------------
@@ -2259,6 +2268,20 @@ package body StreamTransactionPkg is
   begin
     for i in DataPackets'range loop
       Get(TransactionRec, DataPackets(i), StatusMsgOn);
+    end loop;
+  end procedure Get;
+
+   ------------------------------------------------------------
+  procedure Get (
+    ------------------------------------------------------------
+    signal TransactionRec : inout StreamRecType;
+    variable Words  : out slv_array_t;
+    constant NumOfWords : in integer;
+    constant StatusMsgOn  : in boolean := false
+  ) is
+  begin
+    for i in  0 to NumOfWords - 1 loop
+      Words(i) := pop(TransactionRec.TransmitFifo);
     end loop;
   end procedure Get;
 
