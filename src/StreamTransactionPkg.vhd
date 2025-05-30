@@ -121,6 +121,7 @@ package StreamTransactionPkg is
     TRY_CHECK,
     CHECK_BURST,
     TRY_CHECK_BURST,
+    RECEIVE_BURST,
     RECEIVE,
     RECEIVE_PACKET,
     GET_PACKET,
@@ -496,11 +497,7 @@ package StreamTransactionPkg is
     constant Data         : in std_logic_vector;
     constant StatusMsgOn  : in boolean := false
   );
-  procedure Send (
-    signal TransactionRec : inout StreamRecType;
-    constant DataPackets  : in slv_array_t;
-    constant StatusMsgOn  : in boolean := false
-  );
+  
   -- ========================================================
   -- SendAsync
   -- Asynchronous / Non-Blocking Send Transaction
@@ -580,8 +577,8 @@ package StreamTransactionPkg is
     constant StatusMsgOn   : in boolean := false
   );
 
-  --  alias SendBurst is SendBurstVector[StreamRecType, slv_vector, std_logic_vector, boolean] ; 
-  --  alias SendBurst is SendBurstVector[StreamRecType, slv_vector, boolean] ; 
+  alias SendBurst is SendBurstVector[StreamRecType, slv_vector, std_logic_vector, boolean] ; 
+  alias SendBurst is SendBurstVector[StreamRecType, slv_vector, boolean] ; 
 
   ------------------------------------------------------------
   procedure SendBurstVector (
@@ -870,7 +867,7 @@ package StreamTransactionPkg is
   );
 
   ------------------------------------------------------------
-  procedure Receive (
+  procedure ReceiveBurst (
     ------------------------------------------------------------
     signal TransactionRec : inout StreamRecType;
     constant NumOfPackets : in integer;
@@ -1807,17 +1804,6 @@ package body StreamTransactionPkg is
     LocalSend(TransactionRec, SEND, Data, "", StatusMsgOn);
   end procedure Send;
 
-  procedure Send (
-    signal TransactionRec : inout StreamRecType;
-    constant DataPackets  : in slv_array_t;
-    constant StatusMsgOn  : in boolean := false
-  ) is
-  begin
-    for i in DataPackets'range loop
-      Send(TransactionRec, DataPackets(i), StatusMsgOn);
-    end loop;
-  end procedure Send;
-
   -- ========================================================
   -- SendAsync
   -- Asynchronous / Non-Blocking Send Transaction
@@ -2360,18 +2346,18 @@ package body StreamTransactionPkg is
   end procedure Receive;
 
   ------------------------------------------------------------
-  procedure Receive (
+  procedure ReceiveBurst (
     ------------------------------------------------------------
     signal TransactionRec : inout StreamRecType;
     constant NumOfPackets : in integer;
     constant StatusMsgOn  : in boolean := false
   ) is
   begin
-    TransactionRec.Operation   <= RECEIVE;
+    TransactionRec.Operation   <= RECEIVE_BURST;
     TransactionRec.IntToModel  <= NumOfPackets;
     TransactionRec.BoolToModel <= StatusMsgOn;
     RequestTransaction(Rdy => TransactionRec.Rdy, Ack => TransactionRec.Ack);
-  end procedure Receive;
+  end procedure ReceiveBurst;
 
   --  ------------------------------------------------------------
   procedure ReceivePacket (
